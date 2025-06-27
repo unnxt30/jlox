@@ -13,6 +13,7 @@ public class Lox {
     private static final Interpreter interpreter = new Interpreter();
     static boolean hadError = false;
     static boolean hadRuntimeError = false;
+
     public static void main(String[] args) throws IOException {
         if (args.length > 1) {
             System.out.println("Usage: jlox [script]");
@@ -24,7 +25,7 @@ public class Lox {
         }
     }
 
-//    Reads the filepath provided, and runs the interpreter on it.
+    //    Reads the filepath provided, and runs the interpreter on it.
     private static void runFile(String path) throws IOException {
         byte[] bytes = Files.readAllBytes(Paths.get(path));
         run(new String(bytes, Charset.defaultCharset()));
@@ -34,51 +35,67 @@ public class Lox {
     }
 
 
-//    This is the interactive repl environment. Like that of Python.
-   private static void runPrompt() throws IOException{
+    //    This is the interactive repl environment. Like that of Python.
+    private static void runPrompt() throws IOException {
         InputStreamReader input = new InputStreamReader(System.in);
         BufferedReader reader = new BufferedReader(input);
 
-        for (;;){
-            System.out.print("> ");
-            String line = reader.readLine();
-            if (line == null) break;
-            run(line);
+        for (; ; ) {
             hadError = false;
+
+            System.out.print("> ");
+            Scanner scanner = new Scanner(reader.readLine());
+            List<Token> tokens = scanner.scanTokens();
+
+            Parser parser = new Parser(tokens);
+            Object syntax = parser.parseREPL();
+            List<Stmt> statements = parser.parse();
+            if (hadError) continue;
+
+            if (syntax instanceof List) {
+                interpreter.interpret(statements);
+            } else if (syntax instanceof Expr) {
+                String result = interpreter.interpret((Expr) syntax);
+                if (result != null) {
+                    System.out.println("= " + result);
+                }
+            }
+
         }
-   }
+    }
 
-   private static void run(String source){
-       Scanner scanner = new Scanner(source);  // Scanner reads the input path and parses the file.
-       List<Token> tokens = scanner.scanTokens();
-       Parser parser = new Parser(tokens);
-       List<Stmt> statements = parser.parse();
-//       Expr expression = parser.parse();
+    private static void run(String source) {
+        Scanner scanner = new Scanner(source);  // Scanner reads the input path and parses the file.
+        List<Token> tokens = scanner.scanTokens();
+        Parser parser = new Parser(tokens);
+        List<Stmt> statements = parser.parse();
 
-       if (hadError) return;
+        if (hadError) return;
 
-//       System.out.println(new AstPrinter().print(expression));
-       interpreter.interpret(statements);
+        interpreter.interpret(statements);
 
-   }
+    }
 
-   static void error(int line, String message) {
+
+    static void error(int line, String message) {
         report(line, "", message);
-   }
-   static void runtimeError(RuntimeError error) {
-        System.err.println(error.getMessage() + "\n[line "+ error.token.line + "]");
+    }
+
+    static void runtimeError(RuntimeError error) {
+        System.err.println(error.getMessage() + "\n[line " + error.token.line + "]");
         hadRuntimeError = true;
     }
-   private static void report(int line, String where, String message){
+
+    private static void report(int line, String where, String message) {
         System.err.println("[line " + line + "] Error" + where + ": " + message);
         hadError = true;
-   }
+    }
 
-   static void error(Token token, String message){
-        if (token.type == TokenType.EOF){
+    static void error(Token token, String message) {
+        if (token.type == TokenType.EOF) {
             report(token.line, " at end", message);
         } else {
             report(token.line, "at '" + token.lexeme + "'", message);
         }
-   }
+    }
 }

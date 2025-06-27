@@ -1,7 +1,6 @@
 package jlox;
 
 
-
 public class Token {
     final TokenType type;
     final String lexeme;
@@ -15,9 +14,8 @@ public class Token {
         this.line = line;
     }
 
-    public String toString(){
+    public String toString() {
         return type + " " + lexeme + " " + literal;
-
     }
 
 }
