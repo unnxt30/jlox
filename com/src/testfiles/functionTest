@@ -1,0 +1,5 @@
+fun say(name){
+    print "hi " + name;
+}
+
+say("unnat");
