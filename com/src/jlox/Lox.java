@@ -1,9 +1,7 @@
 package jlox;
 
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -20,8 +18,6 @@ public class Lox {
             System.exit(64);
         } else if (args.length == 1) {
             runFile(args[0]);
-        } else {
-            runPrompt();
         }
     }
 
@@ -36,33 +32,33 @@ public class Lox {
 
 
     //    This is the interactive repl environment. Like that of Python.
-    private static void runPrompt() throws IOException {
-        InputStreamReader input = new InputStreamReader(System.in);
-        BufferedReader reader = new BufferedReader(input);
-
-        for (; ; ) {
-            hadError = false;
-
-            System.out.print("> ");
-            Scanner scanner = new Scanner(reader.readLine());
-            List<Token> tokens = scanner.scanTokens();
-
-            Parser parser = new Parser(tokens);
-            Object syntax = parser.parseREPL();
-            List<Stmt> statements = parser.parse();
-            if (hadError) continue;
-
-            if (syntax instanceof List) {
-                interpreter.interpret(statements);
-            } else if (syntax instanceof Expr) {
-                String result = interpreter.interpret((Expr) syntax);
-                if (result != null) {
-                    System.out.println("= " + result);
-                }
-            }
-
-        }
-    }
+//    private static void runPrompt() throws IOException {
+//        InputStreamReader input = new InputStreamReader(System.in);
+//        BufferedReader reader = new BufferedReader(input);
+//
+//        for (; ; ) {
+//            hadError = false;
+//
+//            System.out.print("> ");
+//            Scanner scanner = new Scanner(reader.readLine());
+//            List<Token> tokens = scanner.scanTokens();
+//
+//            Parser parser = new Parser(tokens);
+//            Object syntax = parser.parseREPL();
+//            List<Stmt> statements = parser.parse();
+//            if (hadError) continue;
+//
+//            if (syntax instanceof List) {
+//                interpreter.interpret(statements);
+//            } else if (syntax instanceof Expr) {
+//                String result = interpreter.interpret((Expr) syntax);
+//                if (result != null) {
+//                    System.out.println("= " + result);
+//                }
+//            }
+//
+//        }
+//    }
 
     private static void run(String source) {
         Scanner scanner = new Scanner(source);  // Scanner reads the input path and parses the file.

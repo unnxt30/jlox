@@ -10,7 +10,7 @@ public class Parser {
     private boolean foundExpression = false;
     private boolean allowedExpression;
 
-    private int loopDepth = 0;
+    private int loopDepth = 0; // Used for break Statements and error logging for break.
 
     private static class ParseError extends RuntimeException {
     }
@@ -23,23 +23,23 @@ public class Parser {
     }
 
     // This is quite interesting, it sets the flag that an expression is found, when one expression has been found. so that any further expression are not evaluated in the same pass.
-    Object parseREPL() {
-        allowedExpression = true;
-        List<Stmt> statements = new ArrayList<>();
-
-        while (!isAtEnd()) {
-            statements.add(declaration());
-
-            if (foundExpression) {
-                Stmt last = statements.get(statements.size() - 1);
-                return ((Stmt.Expression) last).expression;
-            }
-
-            allowedExpression = false;
-        }
-
-        return statements;
-    }
+//    Object parseREPL() {
+//        allowedExpression = true;
+//        List<Stmt> statements = new ArrayList<>();
+//
+//        while (!isAtEnd()) {
+//            statements.add(declaration());
+//
+//            if (foundExpression) {
+//                Stmt last = statements.get(statements.size() - 1);
+//                return ((Stmt.Expression) last).expression;
+//            }
+//
+//            allowedExpression = false;
+//        }
+//
+//        return statements;
+//    }
 
     List<Stmt> parse() {
         List<Stmt> statements = new ArrayList<>();
@@ -59,7 +59,10 @@ public class Parser {
     private Stmt declaration() {
         try {
             if (match(VAR)) return varDeclaration();
-            if (match(FUN)) return function("function");
+            if (check(FUN) && checkNext(IDENTIFIER)) {
+                consume(FUN, null);
+                return function("function");
+            }
             return statement();
         } catch (ParseError error) {
             synchronize();
@@ -71,6 +74,7 @@ public class Parser {
         if (match(FOR)) return forStatement();
         if (match(IF)) return ifStatement();
         if (match(PRINT)) return printStatement();
+        if (match(RETURN)) return returnStatement();
         if (match(WHILE)) return whileStatement();
         if (match(LEFT_BRACE)) return new Stmt.Block(block());
         if (match(BREAK)) return breakStatement();
@@ -155,10 +159,21 @@ public class Parser {
     private Stmt printStatement() {
         Expr value = expression();
 
-        consume(SEMICOLON, "Expected a ;");
+        consume(SEMICOLON, "Expected a ; after Print Statement");
         return new Stmt.Print(value);
     }
 
+    private Stmt returnStatement() {
+        Token keyword = previous();
+        Expr value = null;
+
+        if (!check(SEMICOLON)) {
+            value = expression();
+        }
+
+        consume(SEMICOLON, "Expect a semicolon");
+        return new Stmt.Return(keyword, value);
+    }
 
     // Logic taken from the grammar
     // varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
@@ -171,7 +186,7 @@ public class Parser {
             intializer = expression();
         }
 
-        consume(SEMICOLON, "Expected a ;");
+        consume(SEMICOLON, "Expected a ; after variable declaration");
         return new Stmt.Var(name, intializer);
     }
 
@@ -192,19 +207,25 @@ public class Parser {
 
     private Stmt expressionStatement() {
         Expr value = expression();
-
-        if (allowedExpression && isAtEnd()) {
-            foundExpression = false;
-
-        } else {
-            consume(SEMICOLON, "Expected a ;");
-        }
+        consume(SEMICOLON, "Expected a ; after Expression Statement");
         return new Stmt.Expression(value);
     }
 
     private Stmt.Function function(String kind) {
         Token name = consume(IDENTIFIER, "Expect" + kind + " name.");
-        consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
+        return new Stmt.Function(name, functionBody(kind));
+    }
+
+    private boolean checkNext(TokenType tokenType) {
+
+        if (isAtEnd()) return false;
+        if (tokens.get(current + 1).type == EOF) return false;
+
+        return tokens.get(current + 1).type == tokenType;
+    }
+
+    private Expr.Function functionBody(String kind) {
+        consume(LEFT_PAREN, "Expect '(' after" + kind + " name.");
         List<Token> parameters = new ArrayList<>();
         if (!check(RIGHT_PAREN)) {
             do {
@@ -215,11 +236,11 @@ public class Parser {
                 parameters.add(consume(IDENTIFIER, "Expect param name."));
             } while (match(COMMA));
         }
-
         consume(RIGHT_PAREN, "Expect ')' after params");
-        consume(LEFT_BRACE, "Expect '{' before starting of function body");
+
+        consume(LEFT_BRACE, "Expect a '{' before " + kind + " body.");
         List<Stmt> body = block();
-        return new Stmt.Function(name, parameters, body);
+        return new Expr.Function(parameters, body);
     }
 
     private List<Stmt> block() {
@@ -452,7 +473,7 @@ public class Parser {
         if (match(FALSE)) return new Expr.Literal(false);
         if (match(TRUE)) return new Expr.Literal(true);
         if (match(NIL)) return new Expr.Literal(null);
-
+        if (match(FUN)) return functionBody("function");
         if (match(NUMBER, STRING)) {
             return new Expr.Literal(previous().literal);
         }

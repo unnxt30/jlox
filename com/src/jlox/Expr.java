@@ -7,6 +7,7 @@ abstract class Expr {
         R visitAssignExpr(Assign expr);
         R visitBinaryExpr(Binary expr);
         R visitCallExpr(Call expr);
+        R visitFunctionExpr(Function expr);
         R visitGroupingExpr(Grouping expr);
         R visitLiteralExpr(Literal expr);
         R visitLogicalExpr(Logical expr);
@@ -61,6 +62,21 @@ abstract class Expr {
         final Expr callee;
         final Token paren;
         final List<Expr> arguments;
+    }
+
+    static class Function extends Expr {
+        Function(List<Token> parameters, List<Stmt> body) {
+            this.parameters = parameters;
+            this.body = body;
+        }
+
+        @Override
+        <R> R accept(Visitor<R> visitor) {
+            return visitor.visitFunctionExpr(this);
+        }
+
+        final List<Token> parameters;
+        final List<Stmt> body;
     }
 
     static class Grouping extends Expr {
